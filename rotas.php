@@ -1,18 +1,18 @@
 
 <?php
 
-require_once "config.php";
-require_once "controllers/usuariocontrollers.php";
-require_once "controllers/PublicacaoController.php";
-require_once "controllers/CurtidaController.php";
+require_once __DIR__ . "/../controllers/usuariocontrollers.php";
+require_once __DIR__ . "/../controllers/PublicacaoController.php";
+require_once __DIR__ . "/../controllers/CurtidaController.php";
 
 $rota = $_GET["rota"] ?? "";
 $metodo = $_SERVER["REQUEST_METHOD"];
 $id = $_GET["id"] ?? null;
 
-if ($rota === "usuario") {
+if($rota === "usuario"){
 
-    switch($metodo) {
+    switch($metodo){
+
         case "POST":
             createUsuario($con);
             break;
@@ -30,17 +30,23 @@ if ($rota === "usuario") {
             break;
 
         default:
-            teste();
+            http_response_code(405);
+            echo json_encode(["erro" => "Metodo nao permitido"]);
+            break;
     }
 
-} elseif ($rota === "publicacao") {
+} elseif($rota === "login" && $metodo === "POST"){
+
+    loginUsuario($con);
+
+} elseif($rota === "publicacao"){
 
     $controller = new PublicacaoController($con);
     $resultado = $controller->processar($metodo, $id);
 
     echo json_encode($resultado);
 
-} elseif ($rota === "curtida") {
+} elseif($rota === "curtida"){
 
     $controller = new CurtidaController($con);
     $resultado = $controller->processar($metodo, $id);
@@ -50,6 +56,10 @@ if ($rota === "usuario") {
 } else {
 
     http_response_code(404);
-    echo json_encode(["erro" => "Rota não encontrada"]);
 
+    echo json_encode([
+        "erro" => "Rota nao encontrada"
+    ]);
 }
+
+
