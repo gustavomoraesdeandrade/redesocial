@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedeSocial</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- TELA INICIAL DE CADASTRO / ENTRAR -->
+    <section id="tela-cadastro" class="tela-auth">
+        <div class="card-auth">
+            <h1 class="logo-auth">RedeSocial</h1>
+            <p id="subtitulo-auth" class="subtitulo-auth">Cadastre-se para ver fotos e publicar no feed.</p>
+
+            <form id="form-cadastro">
+                <div id="grupo-nome" class="campo-auth">
+                    <label for="cad-nome">Nome completo</label>
+                    <input type="text" id="cad-nome" placeholder="Seu nome completo" required>
+                </div>
+
+                <div id="grupo-usuario" class="campo-auth">
+                    <label for="cad-usuario">Nome de usuário</label>
+                    <input type="text" id="cad-usuario" placeholder="Ex: joao_silva" required>
+                </div>
+
+                <div class="campo-auth">
+                    <label for="cad-email">E-mail</label>
+                    <input type="email" id="cad-email" placeholder="seuemail@exemplo.com" required>
+                </div>
+
+                <div class="campo-auth">
+                    <label for="cad-senha">Senha</label>
+                    <input type="password" id="cad-senha" placeholder="Crie uma senha" required>
+                </div>
+
+                <button type="submit" id="btn-submit-auth" class="btn-azul btn-auth">Cadastrar</button>
+            </form>
+
+            <p id="msg-erro-auth" class="erro-auth"></p>
+
+            <div class="rodape-auth">
+                <span id="texto-alternar">Já tem uma conta?</span>
+                <button type="button" id="btn-alternar-modo" class="link-auth">Entrar</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SITE PRINCIPAL (APARECE APÓS CADASTRAR / ENTRAR) -->
+    <div id="site-principal" class="tela-cheia hidden">
+
+        <!-- BARRA LATERAL -->
+        <aside class="barra-lateral">
+            <h1 class="logo">RedeSocial</h1>
+            <p class="subtitulo">Feed em tela inteira</p>
+
+            <div class="box-usuario">
+                <span class="label-pequeno">Conta ativa</span>
+                <strong id="perfil-nome">Nome</strong>
+                <small id="perfil-arroba">@usuario</small>
+                <small id="perfil-email" class="email-pequeno"></small>
+                <button type="button" id="btn-sair" class="btn-secundario">Sair</button>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="coluna-central">
+
+            <!-- CRIAR PUBLICAÇÃO -->
+            <section class="box-criar">
+                <h2>Criar publicação</h2>
+                <form id="form-criar">
+                    <label for="texto-post">Sua legenda</label>
+                    <textarea id="texto-post" rows="3" placeholder="Escreva sua publicação..." required></textarea>
+
+                    <label for="imagem-post">Endereço da imagem (URL https://)</label>
+                    <input type="text" id="imagem-post" placeholder="Ex: https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80">
+
+                    <label for="arquivo-imagem-post">Ou escolha uma imagem do computador</label>
+                    <input type="file" id="arquivo-imagem-post" accept="image/*">
+
+                    <div id="preview-imagem-box" class="preview-box hidden">
+                        <span class="preview-label">Prévia da imagem:</span>
+                        <img id="preview-imagem-img" src="" alt="Prévia da imagem" class="preview-img">
+                        <button type="button" id="btn-limpar-imagem" class="btn-limpar-img">Remover imagem</button>
+                    </div>
+
+                    <button type="submit" class="btn-azul">Publicar</button>
+                </form>
+            </section>
+
+            <!-- FEED -->
+            <section id="feed-posts"></section>
+
+        </main>
+
+    </div>
+
+    <script>
+        const postsIniciais = [
+            {
+                id: 1,
+                autor: "realmadrid_fan",
+                hora: "14:00",
+                texto: "Dia de jogo grande! Bora pra cima ⚽🤍",
+                imagem: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80",
+                curtido: false,
+                comentarios: ["lucas_rmcf: Hala Madrid!"]
+            },
+            {
+                id: 2,
+                autor: "anaclara.v",
+                hora: "16:20",
+                texto: "Final de tarde na praia ✨🌊",
+                imagem: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+                curtido: false,
+                comentarios: ["mari.s: Que visual!"]
+            }
+        ];
+
+        let contas = JSON.parse(localStorage.getItem("contas_redesocial_v1")) || [];
+        let contaAtiva = JSON.parse(localStorage.getItem("conta_ativa_redesocial_v1")) || null;
+        let posts = JSON.parse(localStorage.getItem("posts_feed_v4")) || postsIniciais;
+        let modoEntrar = false;
+        let imagemSelecionada = "";
+
+        const telaCadastro = document.getElementById("tela-cadastro");
+        const sitePrincipal = document.getElementById("site-principal");
+        const formCadastro = document.getElementById("form-cadastro");
+        const grupoNome = document.getElementById("grupo-nome");
+        const grupoUsuario = document.getElementById("grupo-usuario");
+        const cadNome = document.getElementById("cad-nome");
+        const cadUsuario = document.getElementById("cad-usuario");
+        const cadEmail = document.getElementById("cad-email");
+        const cadSenha = document.getElementById("cad-senha");
+        const subtituloAuth = document.getElementById("subtitulo-auth");
+        const btnSubmitAuth = document.getElementById("btn-submit-auth");
+        const textoAlternar = document.getElementById("texto-alternar");
+        const btnAlternarModo = document.getElementById("btn-alternar-modo");
+        const msgErroAuth = document.getElementById("msg-erro-auth");
+
+        const perfilNome = document.getElementById("perfil-nome");
+        const perfilArroba = document.getElementById("perfil-arroba");
+        const perfilEmail = document.getElementById("perfil-email");
+        const btnSair = document.getElementById("btn-sair");
+
+        const formCriar = document.getElementById("form-criar");
+        const textoPost = document.getElementById("texto-post");
+        const imagemPost = document.getElementById("imagem-post");
+        const arquivoImagemPost = document.getElementById("arquivo-imagem-post");
+        const previewImagemBox = document.getElementById("preview-imagem-box");
+        const previewImagemImg = document.getElementById("preview-imagem-img");
+        const btnLimparImagem = document.getElementById("btn-limpar-imagem");
+        const feedPosts = document.getElementById("feed-posts");
+
+        function limparUsuario(texto) {
+            const limpo = texto.trim().replace(/^@+/, "").replace(/\s+/g, "_").toLowerCase();
+            return limpo || "usuario";
+        }
+
+        function normalizarUrl(url) {
+            const limpa = url.trim();
+            if (!limpa) return "";
+            if (/^data:image\//i.test(limpa)) return limpa;
+            if (!/^https?:\/\//i.test(limpa)) return "https://" + limpa;
+            return limpa;
+        }
+
+        function atualizarPreview(src) {
+            if (src) {
+                previewImagemImg.src = src;
+                previewImagemBox.classList.remove("hidden");
+            } else {
+                previewImagemImg.src = "";
+                previewImagemBox.classList.add("hidden");
+            }
+        }
+
+        imagemPost.addEventListener("input", function () {
+            const url = normalizarUrl(imagemPost.value);
+            if (url) {
+                arquivoImagemPost.value = "";
+                imagemSelecionada = url;
+                atualizarPreview(url);
+            } else if (!arquivoImagemPost.files.length) {
+                imagemSelecionada = "";
+                atualizarPreview("");
+            }
+        });
+
+        arquivoImagemPost.addEventListener("change", function () {
+            const arquivo = arquivoImagemPost.files && arquivoImagemPost.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = function (evento) {
+                imagemSelecionada = evento.target.result || "";
+                imagemPost.value = "";
+                atualizarPreview(imagemSelecionada);
+            };
+            leitor.readAsDataURL(arquivo);
+        });
+
+        btnLimparImagem.addEventListener("click", function () {
+            imagemSelecionada = "";
+            imagemPost.value = "";
+            arquivoImagemPost.value = "";
+            atualizarPreview("");
+        });
+
+        btnAlternarModo.addEventListener("click", function () {
+            modoEntrar = !modoEntrar;
+            msgErroAuth.textContent = "";
+
+            if (modoEntrar) {
+                grupoNome.classList.add("hidden");
+                grupoUsuario.classList.add("hidden");
+                cadNome.required = false;
+                cadUsuario.required = false;
+                subtituloAuth.textContent = "Entre com seu e-mail e senha.";
+                btnSubmitAuth.textContent = "Entrar";
+                textoAlternar.textContent = "Não tem uma conta?";
+                btnAlternarModo.textContent = "Cadastre-se";
+            } else {
+                grupoNome.classList.remove("hidden");
+                grupoUsuario.classList.remove("hidden");
+                cadNome.required = true;
+                cadUsuario.required = true;
+                subtituloAuth.textContent = "Cadastre-se para ver fotos e publicar no feed.";
+                btnSubmitAuth.textContent = "Cadastrar";
+                textoAlternar.textContent = "Já tem uma conta?";
+                btnAlternarModo.textContent = "Entrar";
+            }
+        });
+
+        formCadastro.addEventListener("submit", function (e) {
+            e.preventDefault();
+            msgErroAuth.textContent = "";
+
+            const email = cadEmail.value.trim().toLowerCase();
+            const senha = cadSenha.value.trim();
+
+            if (!email || !senha) {
+                msgErroAuth.textContent = "Preencha e-mail e senha.";
+                return;
+            }
+
+            if (modoEntrar) {
+                let conta = contas.find((c) => c.email === email && c.senha === senha);
+                if (!conta) {
+                    const emailExiste = contas.find((c) => c.email === email);
+                    if (emailExiste) {
+                        msgErroAuth.textContent = "Senha incorreta para este e-mail.";
+                        return;
+                    }
+                    const usuarioAuto = limparUsuario(email.split("@")[0]);
+                    conta = {
+                        nome: email.split("@")[0],
+                        usuario: usuarioAuto,
+                        email: email,
+                        senha: senha
+                    };
+                    contas.push(conta);
+                    localStorage.setItem("contas_redesocial_v1", JSON.stringify(contas));
+                }
+                contaAtiva = conta;
+            } else {
+                const nome = cadNome.value.trim();
+                const usuario = limparUsuario(cadUsuario.value);
+
+                if (!nome) {
+                    msgErroAuth.textContent = "Digite seu nome.";
+                    return;
+                }
+
+                if (contas.some((c) => c.email === email)) {
+                    msgErroAuth.textContent = "Este e-mail já está cadastrado. Clique em Entrar.";
+                    return;
+                }
+
+                const novaConta = {
+                    nome: nome,
+                    usuario: usuario,
+                    email: email,
+                    senha: senha
+                };
+
+                contas.push(novaConta);
+                localStorage.setItem("contas_redesocial_v1", JSON.stringify(contas));
+                contaAtiva = novaConta;
+            }
+
+            localStorage.setItem("conta_ativa_redesocial_v1", JSON.stringify(contaAtiva));
+            formCadastro.reset();
+            abrirSite();
+        });
+
+        btnSair.addEventListener("click", function () {
+            contaAtiva = null;
+            localStorage.removeItem("conta_ativa_redesocial_v1");
+            sitePrincipal.classList.add("hidden");
+            telaCadastro.classList.remove("hidden");
+        });
+
+        function autorAtual() {
+            return contaAtiva ? contaAtiva.usuario : "voce";
+        }
+
+        formCriar.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const texto = textoPost.value.trim();
+            const imagemFinal = imagemSelecionada || normalizarUrl(imagemPost.value);
+            if (!texto) return;
+
+            posts.unshift({
+                id: Date.now(),
+                autor: autorAtual(),
+                hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                texto: texto,
+                imagem: imagemFinal,
+                curtido: false,
+                comentarios: []
+            });
+
+            salvarERenderizar();
+            formCriar.reset();
+            imagemSelecionada = "";
+            atualizarPreview("");
+        });
+
+        window.apagarPost = function (id) {
+            posts = posts.filter((p) => p.id !== id);
+            salvarERenderizar();
+        };
+
+        window.toggleCurtir = function (id) {
+            const post = posts.find((p) => p.id === id);
+            if (!post) return;
+            post.curtido = !post.curtido;
+            salvarERenderizar();
+        };
+
+        window.adicionarComentario = function (e, id) {
+            e.preventDefault();
+            const form = e.target;
+            const input = form.querySelector("input");
+            const texto = input.value.trim();
+            if (!texto) return;
+
+            const post = posts.find((p) => p.id === id);
+            if (!post) return;
+
+            post.comentarios.push(autorAtual() + ": " + texto);
+            salvarERenderizar();
+        };
+
+        window.apagarComentario = function (postId, indiceComentario) {
+            const post = posts.find((p) => p.id === postId);
+            if (!post || !Array.isArray(post.comentarios)) return;
+            post.comentarios.splice(indiceComentario, 1);
+            salvarERenderizar();
+        };
+
+        window.falhaImagem = function (img) {
+            img.style.display = "none";
+            const aviso = img.parentElement && img.parentElement.querySelector(".img-aviso");
+            if (aviso) aviso.classList.remove("hidden");
+        };
+
+        function salvarERenderizar() {
+            localStorage.setItem("posts_feed_v4", JSON.stringify(posts));
+            renderizar();
+        }
+
+        function esc(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function renderizar() {
+            feedPosts.innerHTML = "";
+
+            posts.forEach((post) => {
+                const comentariosHtml = (post.comentarios || [])
+                    .map(
+                        (c, idx) => `
+                            <div class="comentario-item">
+                                <span>${esc(c)}</span>
+                                <button type="button" class="btn-apagar-comentario" onclick="apagarComentario(${post.id}, ${idx})" title="Apagar comentário">✕</button>
+                            </div>
+                        `
+                    )
+                    .join("");
+
+                const srcSeguro = post.imagem && (/^https?:\/\//i.test(post.imagem) || /^data:image\//i.test(post.imagem))
+                    ? post.imagem
+                    : "";
+
+                const imagemHtml = srcSeguro
+                    ? `
+                        <div class="post-midia">
+                            <img
+                                src="${esc(srcSeguro)}"
+                                alt="Imagem do post"
+                                class="post-img"
+                                onerror="falhaImagem(this)"
+                            >
+                            <div class="img-aviso hidden">
+                                A imagem desse endereço não carregou. Verifique se o link é uma imagem direta ou use o seletor de arquivo do computador.
+                            </div>
+                        </div>
+                    `
+                    : "";
+
+                const article = document.createElement("article");
+                article.className = "post-card";
+                article.innerHTML = `
+                    <div class="post-topo">
+                        <div>
+                            <span class="post-autor">${esc(post.autor)}</span>
+                            <span class="post-hora">${esc(post.hora)}</span>
+                        </div>
+                        <button type="button" class="btn-apagar-post" onclick="apagarPost(${post.id})">Apagar</button>
+                    </div>
+
+                    <p class="post-texto">${esc(post.texto)}</p>
+
+                    ${imagemHtml}
+
+                    <div class="post-acoes">
+                        <button type="button" class="btn-curtir ${post.curtido ? "ativo" : ""}" onclick="toggleCurtir(${post.id})">
+                            ${post.curtido ? "♥ Curtido" : "♡ Curtir"}
+                        </button>
+                    </div>
+
+                    <div class="lista-comentarios">
+                        ${comentariosHtml}
+                    </div>
+
+                    <form class="box-comentario" onsubmit="adicionarComentario(event, ${post.id})">
+                        <input type="text" placeholder="Escreva um comentário..." required>
+                        <button type="submit" class="btn-comentar">Comentar</button>
+                    </form>
+                `;
+
+                feedPosts.appendChild(article);
+            });
+        }
+
+        function abrirSite() {
+            telaCadastro.classList.add("hidden");
+            sitePrincipal.classList.remove("hidden");
+
+            if (contaAtiva) {
+                perfilNome.textContent = contaAtiva.nome;
+                perfilArroba.textContent = "@" + contaAtiva.usuario;
+                perfilEmail.textContent = contaAtiva.email;
+            }
+
+            renderizar();
+        }
+
+        if (contaAtiva) {
+            abrirSite();
+        }
+    </script>
+</body>
+</html>
